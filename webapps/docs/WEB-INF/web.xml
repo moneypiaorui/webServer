@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<web-app>
+
+  <display-name>Tomcat Documentation</display-name>
+  <description>
+     Tomcat Documentation.
+  </description>
+
+  <error-page>
+    <error-code>403</error-code>
+    <location>/WEB-INF/jsp/403.jsp</location>
+  </error-page>
+
+</web-app>

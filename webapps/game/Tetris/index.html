@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+    <title>Tetris</title>
+    <style>
+        #game-board {
+            width: 300px;
+            height: 600px;
+            border: 1px solid black;
+            position: relative;
+margin:auto auto;
+        }
+        .block {
+            width: 30px;
+            height: 30px;
+            position: absolute;
+            border: 1px solid #888;
+        }
+        .container {
+        display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 70px;
+    }
+    .arrow {
+      width: 50px;
+      height: 50px;
+      background-color: rgba(174, 174, 174, 0.769);
+      margin: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: 0.1s;
+    }
+    #space {
+      width: 300px;
+      height: 50px;
+      background-color: rgba(174, 174, 174, 0.769);
+      margin: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: 0.1s;
+    }
+    </style>
+</head>
+<body>
+    <h2 style="text-align:center">上下键控制旋转与加速下落，左右键控制方向，空格下落到底部</h4>
+    <div id="game-board"></div>
+
+    <div class="container">
+        <div class="arrow" id="up">&#8593;</div>
+      </div>
+      <div class="container">
+        <div class="arrow" id="left">&#8592;</div>
+        <div class="arrow" id="down">&#8595;</div>
+        <div class="arrow" id="right">&#8594;</div>
+      </div>
+      <div class="container">
+        <div id="space">Space</div>
+      </div>
+      <script>
+       
+        // 获取方向键元素
+        var upArrow = document.getElementById("up");
+        var leftArrow = document.getElementById("left");
+        var downArrow = document.getElementById("down");
+        var rightArrow = document.getElementById("right");
+        var space = document.getElementById("space");
+        const boardWidth = 10;
+        const boardHeight = 20;
+        const blockSize = 30;
+        let board = [];
+
+        const shapes = [
+            [[1, 1, 1, 1]],  // I-shape
+            [[1, 1], [1, 1]],  // O-shape
+            [[1, 1, 0], [0, 1, 1]],  // S-shape
+            [[0, 1, 1], [1, 1, 0]],  // Z-shape
+            [[1, 1, 1], [0, 1, 0]],  // T-shape
+            [[1, 0, 0], [1, 1, 1]],  // L-shape
+            [[0, 0, 1], [1, 1, 1]]  // J-shape
+        ];
+
+        let currentShape = [];
+        let currentX = 0;
+        let currentY = 0;
+        let currentColor = '';
+
+        function createBlock(x, y, color) {
+            let block = document.createElement('div');
+            block.className = 'block';
+            block.style.left = `${x * blockSize}px`;
+            block.style.top = `${y * blockSize}px`;
+            block.style.backgroundColor = color;
+            return block;
+        }
+
+        function updateBoard() {
+            let gameBoard = document.getElementById('game-board');
+            gameBoard.innerHTML = '';
+
+            for (let y = 0; y < boardHeight; y++) {
+                for (let x = 0; x < boardWidth; x++) {
+                    if (board[y][x] !== '') {
+                        gameBoard.appendChild(createBlock(x, y, board[y][x]));
+                    }
+                }
+            }
+
+            for (let y = 0; y < currentShape.length; y++) {
+                for (let x = 0; x < currentShape[0].length; x++) {
+                    if (currentShape[y][x] === 1) {
+                        gameBoard.appendChild(createBlock(currentX + x, currentY + y, currentColor));
+                    }
+                }
+            }
+        }
+
+        function initializeBoard() {
+            for (let y = 0; y < boardHeight; y++) {
+                let row = [];
+                for (let x = 0; x < boardWidth; x++) {
+                    row.push('');
+                }
+                board.push(row);
+            }
+        }
+
+        function rotateShape() {
+            let newShape = [];
+            for (let y = 0; y < currentShape[0].length; y++) {
+                let newRow = [];
+                for (let x = currentShape.length - 1; x >= 0; x--) {
+                    newRow.push(currentShape[x][y]);
+                }
+                newShape.push(newRow);
+            }
+
+            if (isValidMove(currentX, currentY, newShape)) {
+                currentShape = newShape;
+                updateBoard();
+            }
+        }
+
+        function moveShape(dx, dy) {
+            if (isValidMove(currentX + dx, currentY + dy, currentShape)) {
+                currentX += dx;
+                currentY += dy;
+                updateBoard();
+            }
+        }
+
+        function dropShape() {
+            while (isValidMove(currentX, currentY + 1, currentShape)) {
+                currentY++;
+            }
+            placeShape();
+        }
+
+        function placeShape() {
+            for (let y = 0; y < currentShape.length; y++) {
+                for (let x = 0; x < currentShape[0].length; x++) {
+                    if (currentShape[y][x] === 1) {
+                        board[currentY + y][currentX + x] = currentColor;
+                    }
+                }
+            }
+            checkRows();
+            generateNewShape();
+            updateBoard();
+        }
+
+        function checkRows() {
+            for (let y = boardHeight - 1; y >= 0; y--) {
+                if (board[y].every(cell => cell !== '')) {
+                    board.splice(y, 1);
+                    let newRow = [];
+                    for (let x = 0; x < boardWidth; x++) {
+                        newRow.push('');
+                    }
+                    board.unshift(newRow);
+                }
+            }
+        }
+
+        function generateNewShape() {
+            let shapeIndex = Math.floor(Math.random() * shapes.length);
+            let color = generateRandomColor();
+            currentShape = shapes[shapeIndex];
+            currentX = Math.floor((boardWidth - currentShape[0].length) / 2);
+            currentY = 0;
+            currentColor = color;
+            if (!isValidMove(currentX, currentY, currentShape)) {
+                // Game over
+                alert("Game Over");
+                board = [];
+                initializeBoard();
+            }
+        }
+
+        function isValidMove(x, y, shape) {
+            for (let cy = 0; cy < shape.length; cy++) {
+                for (let cx = 0; cx < shape[0].length; cx++) {
+                    if (shape[cy][cx] === 1) {
+                        let nx = x + cx;
+                        let ny = y + cy;
+                        if (nx < 0 || nx >= boardWidth || ny >= boardHeight || board[ny][nx] !== '') {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        function generateRandomColor() {
+            let letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+        function animateDrop() {
+            if (isValidMove(currentX, currentY + 1, currentShape)) {
+                currentY++;
+                updateBoard();
+                // setTimeout(animateDrop, 400);
+            } else {
+                placeShape();
+            }
+        }
+
+        initializeBoard();
+        generateNewShape();
+        updateBoard();
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowUp') {
+                rotateShape();
+                upArrow.style.backgroundColor="rgb(100,100,100)";
+            } else if (event.key === 'ArrowDown') {
+                moveShape(0, 1);
+                downArrow.style.backgroundColor="rgb(100,100,100)";
+            } else if (event.key === 'ArrowLeft') {
+                moveShape(-1, 0);
+                leftArrow.style.backgroundColor="rgb(100,100,100)";
+            } else if (event.key === 'ArrowRight') {
+                moveShape(1, 0);
+                rightArrow.style.backgroundColor="rgb(100,100,100)";
+            } else if (event.key === ' ') {
+                dropShape();
+                space.style.backgroundColor="rgb(100,100,100)";
+            }
+        });
+        document.addEventListener('keyup', function(event) {
+            if (event.key === 'ArrowUp') {
+                upArrow.style.backgroundColor="rgba(174, 174, 174, 0.769)";
+            } else if (event.key === 'ArrowDown') {
+                downArrow.style.backgroundColor="rgba(174, 174, 174, 0.769)";
+            } else if (event.key === 'ArrowLeft') {
+                leftArrow.style.backgroundColor="rgba(174, 174, 174, 0.769)";
+            } else if (event.key === 'ArrowRight') {
+                rightArrow.style.backgroundColor="rgba(174, 174, 174, 0.769)";
+            } else if (event.key === ' ') {
+                space.style.backgroundColor="rgba(174, 174, 174, 0.769)";
+            }
+        });
+
+        // animateDrop();
+
+        var time_interval=setInterval(animateDrop,400);
+
+
+         
+    
+        // 添加事件监听器
+        upArrow.addEventListener("mousedown", ()=> {
+          // 处理向上的逻辑
+          console.log("按下向上");
+          rotateShape();
+          upArrow.style.backgroundColor="rgb(100,100,100)";
+        });
+    
+        leftArrow.addEventListener("mousedown", ()=> {
+          // 处理向左的逻辑
+          console.log("按下向左");
+          moveShape(-1, 0);
+          leftArrow.style.backgroundColor="rgb(100,100,100)";
+        });
+    
+        downArrow.addEventListener("mousedown", ()=> {
+          // 处理向下的逻辑
+          console.log("按下向下");
+          moveShape(0, 1);
+          downArrow.style.backgroundColor="rgb(100,100,100)";
+        });
+    
+        rightArrow.addEventListener("mousedown", ()=> {
+          // 处理向右的逻辑
+          console.log("按下向右");
+          moveShape(1, 0);
+          rightArrow.style.backgroundColor="rgb(100,100,100)";
+        });
+        space.addEventListener("mousedown", ()=> { 
+          // 处理space的逻辑
+          console.log("按下sapce");
+          dropShape();
+          space.style.backgroundColor="rgb(100,100,100)";
+        });
+
+
+
+
+        upArrow.addEventListener("mouseup", ()=> {
+          // 处理向上的逻辑
+          console.log("松开向上");
+          upArrow.style.backgroundColor="rgba(174, 174, 174, 0.769)";
+        });
+    
+        leftArrow.addEventListener("mouseup", ()=> {
+          // 处理向左的逻辑
+          console.log("松开向左");
+          leftArrow.style.backgroundColor="rgba(174, 174, 174, 0.769)";
+        });
+    
+        downArrow.addEventListener("mouseup", ()=> {
+          // 处理向下的逻辑
+          console.log("松开向下");
+          downArrow.style.backgroundColor="rgba(174, 174, 174, 0.769)";
+        });
+    
+        rightArrow.addEventListener("mouseup", ()=> {
+          // 处理向右的逻辑
+          console.log("松开向右");
+          rightArrow.style.backgroundColor="rgba(174, 174, 174, 0.769)";
+        });
+
+        space.addEventListener("mouseup", ()=> {
+          // 处理space的逻辑
+          console.log("松开space");
+          space.style.backgroundColor="rgba(174, 174, 174, 0.769)";
+        });
+    </script>
+</body>
+</html>
